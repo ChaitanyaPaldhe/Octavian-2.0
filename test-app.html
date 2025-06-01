@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Interview Practice - Test App</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .question-container {
+            margin-bottom: 20px;
+        }
+        select, button {
+            padding: 10px;
+            margin: 10px 0;
+            width: 100%;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .recording-indicator {
+            color: red;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+            display: none;
+        }
+        .feedback {
+            margin-top: 30px;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            background-color: #eef7fb;
+        }
+        .feedback h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .score {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .good {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .average {
+            background-color: #f39c12;
+            color: white;
+        }
+        .poor {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .hidden {
+            display: none;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HR Interview Practice</h1>
+        
+        <div id="welcome-screen">
+            <p>Welcome to the HR Interview Practice Tool. This application will help you prepare for job interviews by providing feedback on your spoken responses.</p>
+            <p>You'll be asked common HR interview questions. Answer them as you would in a real interview, and receive feedback on your grammar, confidence, and content.</p>
+            <button id="start-practice">Start Practice</button>
+        </div>
+
+        <div id="interview-screen" class="hidden">
+            <div class="question-container">
+                <h3>Question:</h3>
+                <p id="current-question"></p>
+            </div>
+            
+            <div class="controls">
+                <button id="start-recording">Start Recording</button>
+                <button id="stop-recording" disabled>Stop Recording</button>
+                <div id="recording-indicator" class="recording-indicator">Recording...</div>
+            </div>
+            
+            <div id="loader" class="loader"></div>
+        </div>
+
+        <div id="feedback-screen" class="hidden">
+            <h2>Feedback on Your Response</h2>
+            
+            <div class="feedback">
+                <h3>Transcription</h3>
+                <p id="transcription"></p>
+            </div>
+            
+            <div class="feedback">
+                <h3>Grammar <span id="grammar-score" class="score"></span></h3>
+                <p id="grammar-feedback"></p>
+            </div>
+            
+            <div class="feedback">
+                <h3>Confidence <span id="confidence-score" class="score"></span></h3>
+                <p id="confidence-feedback"></p>
+            </div>
+            
+            <div class="feedback">
+                <h3>Content <span id="content-score" class="score"></span></h3>
+                <p id="content-feedback"></p>
+                
+                <h4>Strengths:</h4>
+                <ul id="strengths"></ul>
+                
+                <h4>Areas for Improvement:</h4>
+                <ul id="weaknesses"></ul>
+                
+                <h4>Suggestions:</h4>
+                <ul id="suggestions"></ul>
+            </div>
+            
+            <div class="controls">
+                <button id="next-question">Next Question</button>
+                <button id="restart">Restart Practice</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Interview questions
+        const questions = [
+            "Tell me about yourself.",
+            "What is your greatest strength?",
+            "What is your greatest weakness?",
+            "Why do you want to work for this company?",
+            "Where do you see yourself in five years?",
+            "Describe a challenge you faced at work and how you handled it.",
+            "Why should we hire you?",
+            "What are your salary expectations?",
+            "Do you have any questions for us?"
+        ];
+
+        // DOM elements
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const interviewScreen = document.getElementById('interview-screen');
+        const feedbackScreen = document.getElementById('feedback-screen');
+        const currentQuestion = document.getElementById('current-question');
+        const startPracticeBtn = document.getElementById('start-practice');
+        const startRecordingBtn = document.getElementById('start-recording');
+        const stopRecordingBtn = document.getElementById('stop-recording');
+        const recordingIndicator = document.getElementById('recording-indicator');
+        const nextQuestionBtn = document.getElementById('next-question');
+        const restartBtn = document.getElementById('restart');
+        const loader = document.getElementById('loader');
+
+        // Audio recording variables
+        let mediaRecorder;
+        let audioChunks = [];
+        let currentQuestionIndex = 0;
+
+        // Initialize the application
+        startPracticeBtn.addEventListener('click', startPractice);
+        startRecordingBtn.addEventListener('click', startRecording);
+        stopRecordingBtn.addEventListener('click', stopRecording);
+        nextQuestionBtn.addEventListener('click', nextQuestion);
+        restartBtn.addEventListener('click', restart);
+
+        // Function to start the practice session
+        function startPractice() {
+            welcomeScreen.classList.add('hidden');
+            interviewScreen.classList.remove('hidden');
+            currentQuestionIndex = 0;
+            displayCurrentQuestion();
+        }
+
+        // Display the current question
+        function displayCurrentQuestion() {
+            currentQuestion.textContent = questions[currentQuestionIndex];
+        }
+
+        // Start recording audio
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.addEventListener('dataavailable', event => {
+                    audioChunks.push(event.data);
+                });
+
+                mediaRecorder.addEventListener('stop', () => {
+                    processAudio();
+                });
+
+                mediaRecorder.start();
+                startRecordingBtn.disabled = true;
+                stopRecordingBtn.disabled = false;
+                recordingIndicator.style.display = 'block';
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+                alert('Unable to access your microphone. Please check your browser permissions.');
+            }
+        }
+
+        // Stop recording audio
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                startRecordingBtn.disabled = false;
+                stopRecordingBtn.disabled = true;
+                recordingIndicator.style.display = 'none';
+                loader.style.display = 'block';
+            }
+        }
+
+        // Process the recorded audio
+        async function processAudio() {
+            try {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const formData = new FormData();
+                formData.append('audio', audioBlob);
+                formData.append('question', questions[currentQuestionIndex]);
+
+                // Send to backend API
+                const response = await fetch('http://localhost:5001/api/analyze-response', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to analyze response');
+                }
+
+                const data = await response.json();
+                displayFeedback(data);
+            } catch (err) {
+                console.error('Error processing audio:', err);
+                alert('There was an error processing your response. Please try again.');
+                loader.style.display = 'none';
+            }
+        }
+
+        // Display feedback from the API
+        function displayFeedback(data) {
+            loader.style.display = 'none';
+            interviewScreen.classList.add('hidden');
+            feedbackScreen.classList.remove('hidden');
+
+            // Transcription
+            document.getElementById('transcription').textContent = data.transcription || 'Transcription not available';
+
+            // Grammar
+            const grammarScore = data.grammarScore || 0;
+            document.getElementById('grammar-score').textContent = grammarScore + '/10';
+            document.getElementById('grammar-score').className = 'score ' + getScoreClass(grammarScore);
+            document.getElementById('grammar-feedback').textContent = data.grammarComments || 'No grammar feedback available';
+
+            // Confidence
+            const confidenceScore = data.confidenceScore || 0;
+            document.getElementById('confidence-score').textContent = confidenceScore + '/10';
+            document.getElementById('confidence-score').className = 'score ' + getScoreClass(confidenceScore);
+            document.getElementById('confidence-feedback').textContent = data.confidenceComments || 'No confidence feedback available';
+
+            // Content
+            const contentScore = data.contentScore || 0;
+            document.getElementById('content-score').textContent = contentScore + '/10';
+            document.getElementById('content-score').className = 'score ' + getScoreClass(contentScore);
+            document.getElementById('content-feedback').textContent = data.contentComments || 'No content feedback available';
+
+            // Strengths
+            const strengthsList = document.getElementById('strengths');
+            strengthsList.innerHTML = '';
+            if (data.strengths && data.strengths.length > 0) {
+                data.strengths.forEach(strength => {
+                    const li = document.createElement('li');
+                    li.textContent = strength;
+                    strengthsList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = 'No specific strengths identified';
+                strengthsList.appendChild(li);
+            }
+
+            // Weaknesses
+            const weaknessesList = document.getElementById('weaknesses');
+            weaknessesList.innerHTML = '';
+            if (data.weaknesses && data.weaknesses.length > 0) {
+                data.weaknesses.forEach(weakness => {
+                    const li = document.createElement('li');
+                    li.textContent = weakness;
+                    weaknessesList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = 'No specific weaknesses identified';
+                weaknessesList.appendChild(li);
+            }
+
+            // Suggestions
+            const suggestionsList = document.getElementById('suggestions');
+            suggestionsList.innerHTML = '';
+            if (data.improvementSuggestions && data.improvementSuggestions.length > 0) {
+                data.improvementSuggestions.forEach(suggestion => {
+                    const li = document.createElement('li');
+                    li.textContent = suggestion;
+                    suggestionsList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = 'No specific improvement suggestions available';
+                suggestionsList.appendChild(li);
+            }
+        }
+
+        // Get CSS class for score visualization
+        function getScoreClass(score) {
+            if (score >= 8) return 'good';
+            if (score >= 6) return 'average';
+            return 'poor';
+        }
+
+        // Move to next question
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex >= questions.length) {
+                currentQuestionIndex = 0;
+            }
+            feedbackScreen.classList.add('hidden');
+            interviewScreen.classList.remove('hidden');
+            displayCurrentQuestion();
+        }
+
+        // Restart the practice session
+        function restart() {
+            feedbackScreen.classList.add('hidden');
+            welcomeScreen.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

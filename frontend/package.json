@@ -1,0 +1,45 @@
+{
+  "name": "hr-interview-practice-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@types/react": "^19.1.6",
+    "autoprefixer": "^10.4.21",
+    "axios": "^1.4.0",
+    "postcss": "^8.5.4",
+    "react": "^18.2.0",
+    "react-audio-voice-recorder": "^2.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^4.8.0",
+    "react-mic": "^12.4.6",
+    "react-scripts": "^3.0.1",
+    "styled-components": "^5.3.9",
+    "tailwindcss": "^4.1.8",
+    "typescript": "^5.8.3"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "proxy": "http://localhost:5001"
+}
